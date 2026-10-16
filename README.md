@@ -8,7 +8,7 @@ Windows 本机环境风险检测工具：69 项检查、0–100 风险圆环、�
 
 ## 下载与使用
 
-1. 从 [Releases](https://github.com/sty311/ScrewClaude/releases/latest) 下载 **ScrewClaude-2.12.0-windows-portable.zip**，完整解压到任意可访问目录。
+1. 从 [Releases](https://github.com/sty311/ScrewClaude/releases/latest) 下载 **ScrewClaude-2.12.1-windows-portable.zip**，完整解压到任意可访问目录。
 2. 双击 **start-web.cmd**（也可以直接打开 ScrewClaude.Web.exe），浏览器会打开本机页面。
 3. 点击“开始检测”。默认尝试全部 69 项，自动搜索本机文件与已保存记录；展开卡片查看搜索范围、读取结果及计分。
 4. 通过网页“关于”中的退出操作或系统托盘退出服务。关闭浏览器标签页不会停止服务。

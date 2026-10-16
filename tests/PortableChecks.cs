@@ -27,7 +27,7 @@ class PortableChecks {
    }
    var state=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(Read(host.Url+"api/state",token));
    Check(!(bool)state["running"]&&!(bool)state["hasReport"],"clean process starts idle with no inherited report");
-   Check((string)state["version"]=="2.12.0","portable version is 2.12.0");
+   Check((string)state["version"]=="2.12.1","portable version is 2.12.1");
   }
   Console.WriteLine("PORTABLE CHECKS PASSED: "+count+" ("+(Environment.Is64BitProcess?"x64":"x86")+")");return 0;
  }catch(Exception ex){Console.Error.WriteLine(ex);return 1;}}

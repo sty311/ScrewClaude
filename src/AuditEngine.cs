@@ -72,7 +72,7 @@ namespace LocalLens {
     }
     private string JsonGet(string url) {
       cancel.ThrowIfCancellationRequested(); ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
-      var req=(HttpWebRequest)WebRequest.Create(url); req.Timeout=8000;req.ReadWriteTimeout=8000;req.UserAgent="ScrewClaude/2.12.0 (user-initiated-environment-check)";req.AllowAutoRedirect=false;
+      var req=(HttpWebRequest)WebRequest.Create(url); req.Timeout=8000;req.ReadWriteTimeout=8000;req.UserAgent="ScrewClaude/2.12.1 (user-initiated-environment-check)";req.AllowAutoRedirect=false;
       // Preserve .NET's system-proxy routing. Never force a direct connection.
       using(cancel.Register(()=>req.Abort()))
       using(var response=(HttpWebResponse)req.GetResponse())

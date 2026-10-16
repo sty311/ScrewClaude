@@ -65,7 +65,7 @@ namespace LocalLens {
     public string ExternalEvidencePath { get; set; }
   }
   public sealed class AuditReport {
-    public string App = "ScrewClaude 2.12.0";
+    public string App = "ScrewClaude 2.12.1";
     public string ScanId;
     public string CreatedUtc;
     public bool Completed;

@@ -1,4 +1,4 @@
-param([string]$Version = '2.12.0')
+param([string]$Version = '2.12.1')
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be numeric major.minor.patch' }
 Set-Location -LiteralPath $PSScriptRoot

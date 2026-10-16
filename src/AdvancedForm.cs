@@ -7,7 +7,7 @@ namespace LocalLens {
   public ScanOptions Options;
   CheckBox browser,probes,location,device,ocr; NumericUpDown monitor;
   TextBox content,browserReport,baseline,external,ocrExe;
-  public AdvancedForm(ScanOptions o){Options=o;Text="ScrewClaude 2.12.0 · 高级检查范围";Size=new Size(850,760);MinimumSize=Size;StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",9);BackColor=Color.White;var panel=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding(20),ColumnCount=1,RowCount=14};Controls.Add(panel);
+  public AdvancedForm(ScanOptions o){Options=o;Text="ScrewClaude 2.12.1 · 高级检查范围";Size=new Size(850,760);MinimumSize=Size;StartPosition=FormStartPosition.CenterParent;Font=new Font("Microsoft YaHei UI",9);BackColor=Color.White;var panel=new TableLayoutPanel{Dock=DockStyle.Fill,Padding=new Padding(20),ColumnCount=1,RowCount=14};Controls.Add(panel);
    panel.Controls.Add(new Label{Text="明确选择读取范围与网络请求",AutoSize=true,Font=new Font(Font,FontStyle.Bold)});
    browser=Check(panel,"浏览器内容：历史 / 下载域名、站点来源、自动填充国家与城市字段",o.BrowserContent);
    probes=Check(panel,"网络路径：UDP STUN、区域耗时、站点可达性、最多 10 跳 tracert（需主界面联网）",o.Probes);
