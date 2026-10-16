@@ -1,4 +1,4 @@
-param([string]$Version = '2.11.0')
+param([string]$Version = '2.12.0')
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be numeric major.minor.patch' }
 Set-Location -LiteralPath $PSScriptRoot
@@ -10,7 +10,7 @@ $packageRoot = Join-Path $distRoot $packageName
 $zipPath = Join-Path $distRoot ($packageName + '.zip')
 if ((Test-Path -LiteralPath $packageRoot) -or (Test-Path -LiteralPath $zipPath)) { throw 'Package already exists; preserve it or choose a new version before rebuilding.' }
 New-Item -ItemType Directory -Path $packageRoot | Out-Null
-$files = @('ScrewClaude.Web.exe','ScrewClaude.Web.exe.config','start-web.cmd','README.md','LICENSE','THIRD_PARTY_NOTICES.md','PORTABILITY.md','SCORING_RULES_2.9.md','NETWORK_CHECKS.md','CHECKS.md')
+$files = @('ScrewClaude.Web.exe','ScrewClaude.Web.exe.config','start-web.cmd','README.md','LICENSE','THIRD_PARTY_NOTICES.md','PORTABILITY.md','SCORING_RULES_3.0.md','NETWORK_CHECKS.md','CHECKS.md')
 foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $packageRoot }
 $hashLines = foreach ($file in $files) { (Get-FileHash -LiteralPath (Join-Path $packageRoot $file) -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $file }
 [IO.File]::WriteAllLines((Join-Path $packageRoot 'SHA256SUMS.txt'),$hashLines,(New-Object Text.UTF8Encoding($false)))
