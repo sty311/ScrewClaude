@@ -14,4 +14,8 @@ if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
 if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
 work\web-test-build\LocationProbeChecks.exe
 if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
+"%LL_CSC%" /nologo /codepage:65001 /out:work\web-test-build\AutomaticFilesChecks.exe /reference:work\web-test-build\ScrewClaude.Web.exe /reference:System.Web.Extensions.dll /reference:System.Drawing.dll tests\AutomaticFilesChecks.cs
+if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
+work\web-test-build\AutomaticFilesChecks.exe "work\automatic-fixtures-%RANDOM%-%RANDOM%"
+if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
 if /i not "%~1"=="--no-pause" pause

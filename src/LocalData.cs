@@ -27,11 +27,11 @@ namespace LocalLens {
     using(var s=e.Open())using(var reader=XmlReader.Create(s,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null,MaxCharactersInDocument=2097152})) {var b=new StringBuilder();while(reader.Read())if(reader.NodeType==XmlNodeType.Text)b.Append(reader.Value).Append(' ');return b.ToString();}
    }
   }
-  public sealed class WalkResult {public List<string> Files=new List<string>();public List<string> Errors=new List<string>();public bool Capped;}
+  public sealed class WalkResult {public List<string> Files=new List<string>();public List<string> Errors=new List<string>();public List<string> Roots=new List<string>();public bool Capped;public bool Automatic;public int Directories,Entries,Excluded;}
   public static WalkResult Walk(string root,int maxFiles,int maxDirs,CancellationToken token) {
-   var r=new WalkResult();if(!Directory.Exists(root))throw new DirectoryNotFoundException("目录不存在或不可访问");if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new IOException("不跟随重解析目录");var q=new Queue<string>();q.Enqueue(root);int dirs=0;
+   var r=new WalkResult();if(!Directory.Exists(root))throw new DirectoryNotFoundException("目录不存在或不可访问");if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new IOException("不跟随重解析目录");r.Roots.Add(root);var q=new Queue<string>();q.Enqueue(root);int dirs=0;
    while(q.Count>0&&dirs<maxDirs){token.ThrowIfCancellationRequested();var dir=q.Dequeue();dirs++;try{foreach(var f in Directory.EnumerateFiles(dir)){token.ThrowIfCancellationRequested();if((File.GetAttributes(f)&FileAttributes.ReparsePoint)!=0)continue;if(r.Files.Count>=maxFiles){r.Capped=true;return r;}r.Files.Add(f);}foreach(var d in Directory.EnumerateDirectories(dir)){if((File.GetAttributes(d)&FileAttributes.ReparsePoint)!=0)continue;if(dirs+q.Count<maxDirs)q.Enqueue(d);else r.Capped=true;}}catch(UnauthorizedAccessException e){r.Errors.Add(e.Message);}catch(IOException e){r.Errors.Add(e.Message);}}
-   if(q.Count>0)r.Capped=true;return r;
+   r.Directories=dirs;r.Entries=r.Files.Count;if(q.Count>0)r.Capped=true;return r;
   }
  }
  public sealed class Baseline {

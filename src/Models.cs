@@ -45,6 +45,8 @@ namespace LocalLens {
     public List<EvidenceSource> Sources { get; set; }
   }
   public sealed class ScanOptions {
+    public ScanOptions(){AutoDiscoverFiles=true;}
+    public bool AutoDiscoverFiles { get; set; }
     public bool Online { get; set; }
     public bool Wifi { get; set; }
     public bool History { get; set; }
@@ -63,7 +65,7 @@ namespace LocalLens {
     public string ExternalEvidencePath { get; set; }
   }
   public sealed class AuditReport {
-    public string App = "ScrewClaude 2.10.1";
+    public string App = "ScrewClaude 2.11.0";
     public string ScanId;
     public string CreatedUtc;
     public bool Completed;

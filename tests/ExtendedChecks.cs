@@ -34,7 +34,7 @@ class ExtendedChecks {
   var missingRecord=RunCheck(57,"ImportExternal",new ScanOptions{ExternalEvidencePath=externalPath},57);Assert(missingRecord.State=="需外部记录","absent external class remains unmet");
   File.WriteAllText(externalPath,"{\"format\":\"LocalLens External Evidence 1\",\"records\":[{\"checkId\":56,\"source\":\"Synthetic export\",\"observedAt\":\"2026-10-15T00:00:00Z\",\"countryCode\":\"\"}]}");
   var noCountry=RunCheck(56,"ImportExternal",new ScanOptions{ExternalEvidencePath=externalPath},56);Assert(noCountry.State=="未检测","external record without country cannot clear check");
-  var noBase=RunCheck(65,"CompareBaseline",new ScanOptions());Assert(noBase.State=="未检测","missing baseline never reported unchanged");
+  var noBase=RunCheck(65,"CompareBaseline",new ScanOptions{AutoDiscoverFiles=false});Assert(noBase.State=="未检测","missing baseline never reported unchanged");
   File.WriteAllText(Path.Combine(root,"bad-browser.json"),"{\"app\":\"LocalLens BrowserCheck 2.0\",\"environment\":{},\"location\":{\"status\":\"returned\",\"latitude\":95,\"longitude\":0}}");
   var badCoord=RunCheck(58,"ImportBrowser",new ScanOptions{BrowserReportPath=Path.Combine(root,"bad-browser.json")});Assert(badCoord.State=="读取失败","out-of-range imported location rejected");
   Console.WriteLine("TOTAL PASSED: "+count);

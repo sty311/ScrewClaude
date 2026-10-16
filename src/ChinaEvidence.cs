@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -79,10 +79,10 @@ namespace LocalLens {
    "制造商、型号和 OEM 品牌没有用户地区记录，不支持中国用户关联。",
    "硬件哈希只能关联设备；必须有该设备的中国使用/销售记录才有地域意义，哈希存在本身不算。",
    "厂商、驱动提供者和签名不等于用户国家，不支持中国用户关联。",
-   "照片 GPS 点经离线 CN 多边形校验且远离边界，支持所选照片的大陆地点关联；东京坐标、无 GPS、仅存在 GPS 标签不命中。照片不自动归属于本人拍摄。",
+   "照片 GPS 点经离线 CN 多边形校验且远离边界，支持已读取照片的大陆地点关联；东京坐标、无 GPS、仅存在 GPS 标签不命中。照片不自动归属于本人拍摄。",
    "成功 OCR 得到明确的居住/收货/联系地址或 +86 联系字段，才支持中国联系资料关联；旅游说明、百科地名、汉字和孤立城市名不算。",
-   "选定文档有明确居住/收货/账单国家 CN 或带大陆行政区与街路门牌的地址字段，才支持中国联系资料关联；正文提及中国/北京不算。",
-   "选定 EML/ICS/VCF 的地址/居住国家/联系字段明确关联大陆，才支持该资料的中国关联；普通正文、发件品牌和地点提及不算。",
+   "已读取文档有明确居住/收货/账单国家 CN 或带大陆行政区与街路门牌的地址字段，才支持中国联系资料关联；正文提及中国/北京不算。",
+   "已读取 EML/ICS/VCF 的地址/居住国家/联系字段明确关联大陆，才支持该资料的中国关联；普通正文、发件品牌和地点提及不算。",
    "真实自动填充国家字段为 CN/China/中国/中国大陆，支持保存的中国地址资料；没有国家的孤立城市词不作为足够证据；不读取付款卡和完整街道。",
    "天气/地图同一缓存对象内的当前位置或收藏/默认地点明确 countryCode=CN 即命中；收藏和默认地点只判地区偏好，不能冒充设备定位。",
    "同步/备份目录存在与用户国家无关，不支持中国用户关联。",
@@ -130,7 +130,7 @@ namespace LocalLens {
      var positions=Coordinates(text);if(positions.Count==0){if(f.State=="信息"||f.Id==12){Pending(f,"未取得可用于中国地域校验的有效坐标");return f;}reason="成功读取的图片没有有效中国大陆 GPS 点";break;}
      int unknown=0;var located=new List<string>();foreach(var p in positions){if(Double.IsNaN(p[2])){unknown++;continue;}bool? inside=ChinaGeography.IsMainland(p[0],p[1],p[2]);if(!inside.HasValue)unknown++;else if(inside.Value)located.Add(p[0].ToString("F6",CultureInfo.InvariantCulture)+", "+p[1].ToString("F6",CultureInfo.InvariantCulture));}
      if(located.Count==0&&unknown>0){Pending(f,"定位精度范围或 2 km 地图边界余量跨越边界，无法完成大陆地域判定");return f;}
-     hit=located.Count>0;matches=String.Join("\r\n",located);family=f.Id==12?"设备位置":"资料地点";claim=f.Id==12?"本次设备定位范围落在中国大陆":"所选照片记录了中国大陆地点";
+     hit=located.Count>0;matches=String.Join("\r\n",located);family=f.Id==12?"设备位置":"资料地点";claim=f.Id==12?"本次设备定位范围落在中国大陆":"已读取照片记录了中国大陆地点";
      reason=hit?"有效坐标通过离线 CN 多边形校验，距边界大于精度半径及 2 km 保守余量。":"有效坐标未落在大陆地域内；坐标存在本身不支持中国用户";alternative=f.Id==12?"定位由系统融合服务提供，来源可能有误；这是该次设备位置，不证明国籍。":"照片可下载、转发、修改或由他人拍摄；支持资料地点关联，不声称本人拍摄或当前在中国。";break;
     case 14:case 29:case 30:case 31:
      matches=AssociationSignals.WirelessNames(text,f.Id==30);hit=matches.Length>0;family="无线网络名称";claim="实际无线或网络名称含中国服务标识";reason=hit?"实际名称字段命中列明中国无线服务标识；不因名称可修改就抹去关联，也不据此认定地理位置。":"实际名称字段未命中列明中国无线服务标识；普通汉字不单独触发";alternative="名称可自定义、复制或在海外使用；附近网络不等于本人连接，保存名称也不能定位。";break;
@@ -167,11 +167,11 @@ namespace LocalLens {
     case 43:
      matches=String.Join("\r\n",ConfigurationEvidence.ActiveUrls(text).Where(u=>MirrorHost(u.Host)).Select(u=>u.GetLeftPart(UriPartial.Authority)).Distinct());hit=matches.Length>0;family="开发服务偏好";claim="用户开发配置选择国内镜像或代码服务";reason=hit?"有效配置 URL 的完整主机名命中服务域名边界，支持配置偏好。":"没有有效的国内服务主机配置；注释和相似域名不算";alternative="组织模板、CI 配置和海外开发者也会采用国内镜像；只支持服务配置关联。";break;
     case 44:matches=MatchLines(text,@"(?im)^Domain\s*=\s*[^\r\n\s]+\.cn\s*$");hit=matches.Length>0&&Regex.IsMatch(text,@"(?im)^PartOfDomain\s*=\s*True\s*$");family="组织域关联";claim="本机已加入使用 .cn 域的组织";reason=hit?"域成员状态与中国国家域名同时成立，支持中国组织域关联。":"没有同时取得已加入状态与 .cn 组织域";alternative=".cn 域可用于跨国组织；它不是个人国籍或物理位置证明。";break;
-    case 49:case 50:case 51:matches=String.Join("\r\n",ContactMatches(text));hit=matches.Length>0;family="联系资料关联";claim="选定资料存在明确的中国大陆联系/地址字段";reason=hit?"命中的是带归属语义的地址/居住国家/联系字段，排除百科、旅游、孤立城市词和普通汉字。":"所读资料没有明确中国联系或地址字段；普通地名提及不足以关联用户";alternative="资料可属于他人、示例或转发内容；只证明所选资料的联系字段，不自动认定本人地址。";break;
+    case 49:case 50:case 51:matches=String.Join("\r\n",ContactMatches(text));hit=matches.Length>0;family="联系资料关联";claim="已读取资料存在明确的中国大陆联系/地址字段";reason=hit?"命中的是带归属语义的地址/居住国家/联系字段，排除百科、旅游、孤立城市词和普通汉字。":"所读资料没有明确中国联系或地址字段；普通地名提及不足以关联用户";alternative="资料可属于他人、示例或转发内容；只证明所读资料的联系字段，不自动认定本人地址。";break;
     case 52:matches=MatchLines(text,@"(?i)/\s*(?:country|country_code|countrycode)\s*=\s*(?:CN|China|中国|中国大陆)\s*$");hit=matches.Length>0;family="联系资料关联";claim="浏览器保存了明确标注中国大陆国家的地址资料";reason=hit?"真实自动填充国家白名单字段明确为 CN/China/中国；其他独立保存的外国地址不会抹去该记录。":"自动填充没有明确的中国大陆国家字段；孤立省市词没有足够地区归属依据";alternative="地址可为收件人、公司或代填资料；支持保存资料的中国关联，不冒充当前所在地。";break;
     case 53:
      matches=MatchLines(text,@"^CURRENT_LOCATION_COUNTRY=CN$");bool currentLocation=matches.Length>0;if(!currentLocation)matches=MatchLines(text,@"^SAVED_LOCATION_COUNTRY=CN$");hit=matches.Length>0;family=currentLocation?"设备位置":"地图地区偏好";claim=currentLocation?"本地天气/地图的当前定位记录指向中国大陆":"天气/地图保存了明确的中国大陆地区偏好";reason=hit?(currentLocation?"同一缓存对象含当前定位标志与 CN 国家字段。":"同一缓存对象含收藏/默认位置标志与 CN 国家字段；保留地区偏好风险，不冒充当前定位。"):"没有取得当前或已保存位置的明确 CN 地区记录";alternative="缓存可由默认模板、同步或他人操作留下，也可能陈旧；保存偏好不证明当前所在地。";break;
-    case 55:matches=MatchLines(text,@"(?i)(?:TZID|timeZone|timezone|时区)[^\r\n]{0,35}[:=]\s*[""']?(?:Asia/(?:Shanghai|Chongqing|Urumqi)|China Standard Time)");hit=matches.Length>0;family="历史地区配置";claim="选定文件显式记录中国命名时区";reason=hit?"时区字段包含具体中国命名区域，排除任意 UTC 偏移和 +0800。":"只有 UTC 偏移、时间戳或未注明来源的时区文字，不能指向中国";alternative="时区来自文件生成工具或内容安排；共享时区和模板不能定位本人。";break;
+    case 55:matches=MatchLines(text,@"(?i)(?:TZID|timeZone|timezone|时区)[^\r\n]{0,35}[:=]\s*[""']?(?:Asia/(?:Shanghai|Chongqing|Urumqi)|China Standard Time)");hit=matches.Length>0;family="历史地区配置";claim="已读取文件显式记录中国命名时区";reason=hit?"时区字段包含具体中国命名区域，排除任意 UTC 偏移和 +0800。":"只有 UTC 偏移、时间戳或未注明来源的时区文字，不能指向中国";alternative="时区来自文件生成工具或内容安排；共享时区和模板不能定位本人。";break;
     case 56:case 57:case 59:case 60:case 61:matches=MatchLines(text,@"国家=CN(?:\s*\||$)");hit=f.State=="发现线索";family="外部记录关联";claim="导入记录明确标注中国大陆地区";reason=hit?"解析并验证的记录提供 CN 国家字段、来源和观察时间；支持的是这份记录声称的中国关联，备注内的 CN 不参与判定。":"有效导入记录没有 CN 国家字段";alternative="用户导入文件未经平台签名验证，可陈旧、整理错误或属于其他人/设备，身份与设备归属未经核验；不称为已验证平台证明。";break;
     case 58:matches=RuntimeLocaleMatches(text);hit=matches.Length>0;claim="浏览器运行时存在中文或中国地区偏好";reason=hit?"只使用 language/languages/locale/timeZone 的有效中文/CN/命名时区值；不要求语言必须带 CN，不读取任意 UA 文本代替。":"实际浏览器字段没有命中中文/CN 语言或中国命名时区";break;
     case 68:

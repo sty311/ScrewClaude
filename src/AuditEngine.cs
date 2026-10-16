@@ -72,7 +72,7 @@ namespace LocalLens {
     }
     private string JsonGet(string url) {
       cancel.ThrowIfCancellationRequested(); ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
-      var req=(HttpWebRequest)WebRequest.Create(url); req.Timeout=8000;req.ReadWriteTimeout=8000;req.UserAgent="ScrewClaude/2.10.1 (user-initiated-environment-check)";req.AllowAutoRedirect=false;
+      var req=(HttpWebRequest)WebRequest.Create(url); req.Timeout=8000;req.ReadWriteTimeout=8000;req.UserAgent="ScrewClaude/2.11.0 (user-initiated-environment-check)";req.AllowAutoRedirect=false;
       // Preserve .NET's system-proxy routing. Never force a direct connection.
       using(cancel.Register(()=>req.Abort()))
       using(var response=(HttpWebResponse)req.GetResponse())
@@ -121,7 +121,7 @@ namespace LocalLens {
         Run(18,()=>{string s="UI Culture = "+CultureInfo.CurrentUICulture.Name+"\r\n"+RegValues(Registry.LocalMachine,@"SYSTEM\CurrentControlSet\Control\Nls\Language","InstallLanguage","Default")+"\r\n"+RegValues(Registry.CurrentUser,@"Control Panel\Desktop","PreferredUILanguages");Mark(18,s,IsLocale(s),"显示或安装语言配置存在大陆中文标记","未见所列大陆中文语言标记");});
         Run(19,()=>{string s=PS("Get-WinSystemLocale | Select-Object Name,DisplayName | ConvertTo-Json -Compress");Mark(19,s,IsLocale(s),"系统区域含大陆中文标记","系统区域未见大陆中文标记");});
         Run(20,()=>{string s=RegValues(Registry.CurrentUser,@"Control Panel\International","LocaleName","sLanguage","sCountry","sCurrency","sShortDate","sTimeFormat","sDecimal","iCalendarType");Mark(20,s,IsLocale(s),"区域格式含大陆中文标记","所列区域格式未见大陆中文标记");});
-        Run(21,()=>{string s=PS("Get-WinUserLanguageList | Select-Object LanguageTag,Autonym,InputMethodTips | ConvertTo-Json -Depth 4 -Compress");Mark(21,s,IsLocale(s),"语言列表含大陆中文标记","语言列表未见大陆中文标记");});
+        Run(21,UserLanguages);
         Run(22,()=>{using(var k=Registry.CurrentUser.OpenSubKey(@"Keyboard Layout\Preload",false)){if(k==null){Skip(22,"未找到可读取的首选键盘配置");return;}string s=String.Join("\r\n",k.GetValueNames().Select(n=>n+" = "+Convert.ToString(k.GetValue(n))));Mark(22,s,s.Contains("0804"),"发现简体中文键盘标记","所查键盘配置未发现 0804 标记","仅 Keyboard Layout / Preload");}});
         Run(23,()=>{string s=TimeZoneInfo.Local.Id+"\r\n"+TimeZoneInfo.Local.DisplayName+"\r\nUTC offset = "+TimeZoneInfo.Local.GetUtcOffset(DateTime.Now)+"\r\n自动时区服务 Start = "+Reg(Registry.LocalMachine,@"SYSTEM\CurrentControlSet\Services\tzautoupdate","Start");Mark(23,s,IsLocale(s),"当前使用中国标准时区设置","当前时区不是 China Standard Time");});
         Run(24,()=>{var list=new List<string>();int inaccessible=0;string currentSid;using(var identity=System.Security.Principal.WindowsIdentity.GetCurrent())currentSid=identity.User.Value;foreach(string sid in Registry.Users.GetSubKeyNames()){if(!OtherUserProfile(sid,currentSid))continue;try{using(var k=Registry.Users.OpenSubKey(sid+@"\Control Panel\International",false)){string locale=k==null?"":Convert.ToString(k.GetValue("LocaleName"));if(!String.IsNullOrWhiteSpace(locale))list.Add("其他已加载用户配置 "+(list.Count+1)+" LocaleName="+locale);}}catch{inaccessible++;}}if(list.Count==0){Skip(24,"没有其他已加载且可读的用户区域配置；当前用户及系统服务账户不重复统计");return;}string s=String.Join("\r\n",list);if(inaccessible>0)s+="\r\n不可读取的配置数："+inaccessible;Mark(24,s,IsLocale(s),"其他用户配置有大陆地区标记","其他可读用户配置未见大陆地区标记","仅其他已加载用户；不代表过去时间，不能确定归属于本人；不可读取 "+inaccessible);});
@@ -144,33 +144,45 @@ namespace LocalLens {
         }}string s=String.Join("\r\n",lines);Info(43,s,"白名单配置文件 / 活动 URL 解析 / 注释与配置边界隔离");});
         Run(44,()=>Info(44,Wmi("SELECT Domain,PartOfDomain FROM Win32_ComputerSystem",new[]{"Domain","PartOfDomain"}),"只查询本机域加入信息"));
         Run(45,()=>Info(45,Wmi("SELECT Manufacturer,Model FROM Win32_ComputerSystem",new[]{"Manufacturer","Model"}),"只显示制造商与型号，不推断销售国家"));
-        if(!String.IsNullOrWhiteSpace(options.PhotoFolder))Run(48,()=>PhotoMetadata(options.PhotoFolder));else Skip(48,"未选择照片目录");
+        Run(48,ScanPhotos);
         Run(64,()=>{var lines=new List<string>();foreach(var device in new[]{"webcam","microphone"}){string root=@"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\"+device;lines.Add(device+"："+Reg(Registry.CurrentUser,root,"Value"));using(var k=Registry.CurrentUser.OpenSubKey(root+@"\NonPackaged",false)){if(k==null)continue;foreach(var sub in k.GetSubKeyNames().Take(80))using(var app=k.OpenSubKey(sub,false)){lines.Add(sub.Replace('#','\\')+" | Start = "+Convert.ToString(app.GetValue("LastUsedTimeStart"))+" | Stop = "+Convert.ToString(app.GetValue("LastUsedTimeStop")));}}}Info(64,String.Join("\r\n",lines),"已读取部分系统权限 / 使用记录，不能判断有无偷拍监听");});
         Run(68,()=>{var s=new StringBuilder("Windows 国家设置："+country+"\r\nWindows 时区："+TimeZoneInfo.Local.Id+"\r\n");bool mismatch=false;foreach(var pair in geo){string code=Value(pair.Value,"country_code");s.AppendLine(pair.Key+" 查询出口国家："+code);if(Regex.IsMatch(country??"","^[A-Z]{2}$")&&country!=code)mismatch=true;}s.AppendLine("浏览器运行时值需在附带检查页另行查看。时区未自动映射为国家。");if(geo.Count==0||!Regex.IsMatch(country??"","^[A-Z]{2}$")){Info(68,s.ToString(),"缺少有效系统国家或网络出口对照样本");return;}Mark(68,s.ToString(),mismatch,"国家设置与至少一个查询出口国家不同","可比较的国家设置与出口结果一致","仅配置与本次出口比较");});
         ExtendedScan();
-        complete=true;
+        cancel.ThrowIfCancellationRequested();
+        complete=true;SaveAutomaticBaseline();
       } catch(OperationCanceledException) {} 
       return new AuditReport {CreatedUtc=DateTime.UtcNow.ToString("o"),Completed=complete,Platform=Environment.OSVersion.ToString(),Options=options,Findings=rows,Snapshot=Baseline.Create(rows)};
     }
+    private void UserLanguages(){string s=PS("@(foreach($item in (Get-WinUserLanguageList)){[pscustomobject]@{LanguageTag=$item.LanguageTag;Autonym=$item.Autonym;InputMethodTips=@($item.InputMethodTips)}}) | ConvertTo-Json -Depth 4 -Compress");Mark(21,s,IsLocale(s),"语言列表含大陆中文标记","语言列表未见大陆中文标记");}
     public static bool OtherUserProfile(string sid,string currentSid){return !String.Equals(sid,currentSid,StringComparison.OrdinalIgnoreCase)&&Regex.IsMatch(sid??"",@"^S-1-(?:5-21-\d+-\d+-\d+-\d+|12-1-\d+-\d+-\d+-\d+)$");}
     private string Wmi(string query,string[] fields) {
       var b=new StringBuilder();using(var search=new ManagementObjectSearcher(new ManagementScope(@"\\.\root\cimv2"),new ObjectQuery(query),new System.Management.EnumerationOptions {Timeout=TimeSpan.FromSeconds(8)}))using(var objects=search.Get()){foreach(ManagementObject item in objects){using(item){foreach(var f in fields)b.AppendLine(f+" = "+Convert.ToString(item[f]));}}}return b.ToString();
     }
     private static double Rational(byte[] b,int offset) {uint den=BitConverter.ToUInt32(b,offset+4);if(den==0)throw new FormatException("GPS 分母为零");return (double)BitConverter.ToUInt32(b,offset)/den;}
     public static double Coordinate(byte[] b,string reference) {if(b.Length<24)throw new FormatException("GPS 数据长度错误");double v=Rational(b,0)+Rational(b,8)/60+Rational(b,16)/3600;return reference=="S"||reference=="W"?-v:v;}
-    private void PhotoMetadata(string root) {
-      if(!Directory.Exists(root))throw new DirectoryNotFoundException("所选目录不存在或不可访问");
-      if((File.GetAttributes(root)&FileAttributes.ReparsePoint)!=0)throw new IOException("不跟随重解析目录");
-      int count=0,failed=0,found=0,skipped=0;bool capped=false;var lines=new List<string>();var dirs=new Queue<string>();dirs.Enqueue(root);
-      int dirCount=0;
-      while(dirs.Count>0&&count<500&&dirCount<1000){cancel.ThrowIfCancellationRequested();string dir=dirs.Dequeue();dirCount++;
-        try {foreach(string child in Directory.EnumerateDirectories(dir)){if((File.GetAttributes(child)&FileAttributes.ReparsePoint)==0){if(dirs.Count+dirCount<1000)dirs.Enqueue(child);else capped=true;}}foreach(string file in Directory.EnumerateFiles(dir)){cancel.ThrowIfCancellationRequested();if(!Regex.IsMatch(Path.GetExtension(file),@"(?i)^\.(jpe?g|tiff?)$"))continue;if(count>=500){capped=true;break;}count++;try{if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0){skipped++;continue;}if(new FileInfo(file).Length>30*1024*1024){skipped++;continue;}using(var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))using(var img=Image.FromStream(stream,false,false)){if(!img.PropertyIdList.Contains(2)||!img.PropertyIdList.Contains(4))continue;string latRef=Encoding.ASCII.GetString(img.GetPropertyItem(1).Value).Trim('\0'),lonRef=Encoding.ASCII.GetString(img.GetPropertyItem(3).Value).Trim('\0');if((latRef!="N"&&latRef!="S")||(lonRef!="E"&&lonRef!="W"))throw new FormatException("GPS 方向错误");double lat=Coordinate(img.GetPropertyItem(2).Value,latRef),lon=Coordinate(img.GetPropertyItem(4).Value,lonRef);if(Math.Abs(lat)>90||Math.Abs(lon)>180)throw new FormatException("GPS 坐标越界");found++;lines.Add(Path.GetFileName(file)+"\r\nGPS_SAMPLE latitude="+lat.ToString("F6",CultureInfo.InvariantCulture)+" longitude="+lon.ToString("F6",CultureInfo.InvariantCulture));}}catch(Exception e){if(e is OperationCanceledException)throw;failed++;}}
-        }catch(UnauthorizedAccessException){failed++;}catch(IOException){failed++;}
+    private void PhotoMetadata(string root) {PhotoFiles(LocalData.Walk(root,10000,1000,cancel));}
+    private void PhotoFiles(LocalData.WalkResult walk) {
+      var files=walk.Files.Where(file=>Regex.IsMatch(Path.GetExtension(file),@"(?i)^\.(jpe?g|tiff?)$")).Take(501).ToArray();
+      int count=0,failed=walk.Errors.Count,found=0,skipped=0;bool capped=walk.Capped||files.Length>500;
+      var lines=new List<string>{AutomaticFiles.Description(walk)};
+      foreach(string file in files.Take(500)){
+        cancel.ThrowIfCancellationRequested();count++;
+        try{
+          if(!AutomaticFiles.LocalEntry(File.GetAttributes(file))||new FileInfo(file).Length>30*1024*1024){skipped++;continue;}
+          using(var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))using(var img=Image.FromStream(stream,false,false)){
+            if(!img.PropertyIdList.Contains(2)||!img.PropertyIdList.Contains(4))continue;
+            string latRef=Encoding.ASCII.GetString(img.GetPropertyItem(1).Value).Trim('\0'),lonRef=Encoding.ASCII.GetString(img.GetPropertyItem(3).Value).Trim('\0');
+            if((latRef!="N"&&latRef!="S")||(lonRef!="E"&&lonRef!="W"))throw new FormatException("GPS 方向错误");
+            double lat=Coordinate(img.GetPropertyItem(2).Value,latRef),lon=Coordinate(img.GetPropertyItem(4).Value,lonRef);
+            if(Math.Abs(lat)>90||Math.Abs(lon)>180)throw new FormatException("GPS 坐标越界");found++;
+            lines.Add(Path.GetFileName(file)+"\r\nGPS_SAMPLE latitude="+lat.ToString("F6",CultureInfo.InvariantCulture)+" longitude="+lon.ToString("F6",CultureInfo.InvariantCulture));
+          }
+        }catch(Exception e){if(e is OperationCanceledException)throw;failed++;lines.Add(Path.GetFileName(file)+"："+e.Message);}
       }
-      capped=capped||dirs.Count>0||count>=500;lines.Insert(0,"候选图片 "+count+"；发现 GPS "+found+"；错误 "+failed+"；大文件跳过 "+skipped+"；达到上限 "+capped+"\r\n坐标只在本地展示；使用内置 Natural Earth 1:10m CN 多边形及至少 2 km 边界余量进行离线地域校验。");
-      if(count==0)Info(48,String.Join("\r\n",lines),"没有可分析的 JPEG / TIFF 样本；不能给出未发现结论");
+      lines.Insert(0,"候选图片 "+count+"；发现 GPS "+found+"；错误 "+failed+"；大文件或链接跳过 "+skipped+"；达到上限 "+capped+"\r\n坐标只在本地展示；使用内置 Natural Earth 1:10m CN 多边形及至少 2 km 边界余量进行离线地域校验。");
+      if(count==0)Info(48,String.Join("\r\n",lines),"自动或指定范围没有可分析的 JPEG / TIFF 样本");
       else if(found==0&&(failed>0||skipped>0||capped))Info(48,String.Join("\r\n",lines),"未取得 GPS，但扫描有受限 / 跳过项目");
-      else Mark(48,String.Join("\r\n",lines),found>0,"选定图片中发现 GPS 元数据","已读取的选定图片未发现 GPS 元数据",capped?"有上限 / 部分覆盖":"仅选定目录的 JPEG / TIFF");
+      else Mark(48,String.Join("\r\n",lines),found>0,"已发现图片中取得 GPS 元数据","已读取图片未发现 GPS 元数据",(walk.Automatic?"自动发现图片":"指定目录图片")+(capped?" / 有上限 / 部分覆盖":" / JPEG / TIFF"));
     }
   }
 }

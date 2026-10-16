@@ -21,7 +21,7 @@ namespace LocalLens {
   public static CountryObservation[] LookupMany(string[] values){var ips=ValidateAddresses(values);return Task.WhenAll(ips.Select(ip=>Task.Run(()=>Lookup(ip)))).GetAwaiter().GetResult();}
   public static CountryObservation Lookup(string ip){ip=ValidateAddresses(new[]{ip})[0];lock(sync){CountryObservation previous;if(cache.TryGetValue(ip,out previous))return previous;if(cache.Count>=128)return new CountryObservation{Ip=ip,Source="ipwho.is",Error="本次服务的公网归属查询已达到 128 个地址上限"};}
    slots.Wait();try{
-    var request=(HttpWebRequest)WebRequest.Create("https://ipwho.is/"+Uri.EscapeDataString(ip));request.Timeout=5000;request.ReadWriteTimeout=5000;request.AllowAutoRedirect=false;request.UserAgent="ScrewClaude/2.10.1 country-evidence";ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
+    var request=(HttpWebRequest)WebRequest.Create("https://ipwho.is/"+Uri.EscapeDataString(ip));request.Timeout=5000;request.ReadWriteTimeout=5000;request.AllowAutoRedirect=false;request.UserAgent="ScrewClaude/2.11.0 country-evidence";ServicePointManager.SecurityProtocol|=SecurityProtocolType.Tls12;
     using(var response=(HttpWebResponse)request.GetResponse())using(var reader=new StreamReader(response.GetResponseStream(),Encoding.UTF8)){
      var body=new StringBuilder();var buffer=new char[2048];int n;while((n=reader.Read(buffer,0,buffer.Length))>0){body.Append(buffer,0,n);if(body.Length>32768)throw new IOException("地理资料响应超过上限");}
      var d=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(body.ToString());object cc,returned,success;IPAddress address;
