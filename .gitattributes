@@ -1,0 +1,8 @@
+* text=auto
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.ico binary
+*.docx binary
+tests/fixtures/profile/History binary
+"tests/fixtures/profile/Web Data" binary

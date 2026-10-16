@@ -1,0 +1,13 @@
+/work/
+/dist/
+/outputs/
+*.exe
+*.pdb
+*.zip
+*.private.*
+*.log
+*-results.txt
+ScrewClaude.Web.exe.config
+LocalLens.Web.exe.config
+.DS_Store
+Thumbs.db

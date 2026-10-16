@@ -1,0 +1,21 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..'),read=name=>fs.readFileSync(path.join(root,name),'utf8');
+const html=read('web/index.html'),app=read('web/app.js'),css=read('web/styles.css'),host=read('src/WebHost.cs'),build=read('build-web.cmd');
+let count=0;function check(name,run){run();count++;console.log('PASS: '+name);}
+const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+check('every interactive element ID is unique',()=>assert.equal(new Set(ids).size,ids.length));
+check('literal application DOM references are present in the actual page',()=>{for(const match of app.matchAll(/\$\('([^']+)'\)/g)){if(match[1]==='coverage-count')continue;assert.ok(ids.includes(match[1]),'missing '+match[1]);}});
+check('risk model is loaded before the UI and optional network workflow',()=>assert.deepEqual([...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m=>m[1]),['/risk-core.js','/network-core.js','/app.js','/network.js']));
+check('the main meter is a risk score out of 100 while scan progress is separate',()=>{assert.match(html,/<div class="score-ring"[^>]*role="meter"[^>]*aria-valuemax="100"/);assert.ok(ids.includes('scan-progress'));assert.ok(html.includes('69 项'));assert.ok(ids.includes('settings-form'));assert.ok(ids.includes('category-filter'));});
+check('obsolete clue wording is absent from visible markup',()=>assert.ok(!/线索/.test(html)));
+check('default page has no remote scripts styles frames tracking or advertising',()=>{assert.ok(!/<(?:script|iframe)[^>]+(?:src|href)="https?:/i.test(html));assert.ok(!/<link[^>]+href="https?:/i.test(html));assert.ok(!/gtag|googletagmanager|adsense|doubleclick/i.test(html));assert.ok(!/@import|url\(\s*['"]?https?:/i.test(css));});
+check('all five new mascot states are embedded through an explicit local allowlist',()=>{for(const state of ['doze','scan','result','medium','high']){const file='mascot-'+state+'.png';assert.ok(fs.statSync(path.join(root,'web',file)).size>1000);assert.ok(host.includes('r.Path=="/'+file+'"'));assert.ok(build.includes('/resource:web\\'+file+',web.'+file));}});
+check('details sharing and model explanations use reachable static dialogs',()=>{for(const id of ['risk-detail-dialog','share-dialog','about-dialog']){const match=html.match(new RegExp('<dialog id="'+id+'"[\\s\\S]*?</dialog>'));assert.ok(match);assert.match(match[0],/class="[^"]*close-dialog/);}});
+check('sharing begins with a readonly local review field',()=>{assert.match(html,/<textarea id="share-summary" readonly/);for(const id of ['copy-result-button','native-share-button','share-save-button'])assert.ok(ids.includes(id));});
+check('network checks share the main scan rather than separate controls',()=>{for(const id of ['network-open','network-dialog','network-consent','network-section'])assert.ok(!ids.includes(id));for(const text of ['DNS','WebRTC','HTTPS','BrowserLeaks','ipwho.is','STUN'])assert.ok(html.includes(text));for(const field of ['History','Wifi','Online','Probes','BrowserContent','DeviceIdentifiers','RequestLocation','Ocr'])assert.ok(html.includes('name="'+field+'" checked'));assert.ok(ids.includes('summary-skipped'));});
+check('score band boundaries and skipped observations are explained',()=>{for(const text of ['0–30','＞30 至 60','＞60 至 100','已跳过','跳过不等于安全'])assert.ok(html.includes(text),text);});
+check('responsive layout and reduced motion are available',()=>{assert.match(css,/@media\s*\(max-width:560px\)/);assert.match(css,/@media\s*\(prefers-reduced-motion:reduce\)/);assert.match(css,/\.risk-signal-result/);});
+check('source attribution and the complete MIT notice are retained',()=>{assert.ok(html.includes('https://github.com/LinXiaoTao/FuckClaude'));const notice=read('THIRD_PARTY_NOTICES.md');assert.ok(notice.includes('Copyright (c) 2026 LinXiaoTao'));assert.ok(notice.includes('Permission is hereby granted'));assert.ok(notice.includes('THE SOFTWARE IS PROVIDED'));});
+check('score copy describes dimensions discounts and the total cap without obsolete family ceilings',()=>{for(const text of ['100%','50%','25%','一位小数','按比例压缩'])assert.ok(html.includes(text),text);assert.ok(!/同类取最高|同类已归并|同类归并|类上限/.test(app));});
+console.log('FRONTEND MARKUP CHECKS PASSED: '+count);

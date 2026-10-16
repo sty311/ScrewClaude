@@ -1,0 +1,58 @@
+'use strict';
+const assert=require('node:assert/strict');
+const core=require('../web/network-core.js');
+let count=0;function check(name,run){run();count++;console.log('PASS: '+name);}
+const candidate=(address,type='srflx')=>({address,type,protocol:'udp'});
+const geo=(Ip,Country,Source='synthetic country source')=>({Ip,Country,Source});
+const rtc=(address,Country,extra={})=>({completed:true,candidates:[candidate(address)],geography:Country?[geo(address,Country)]:[],...extra});
+const https=[{name:'HTTPS',ip:'8.8.8.8',country:'US'}];
+
+check('IPv4 validates octets and rejects ambiguous forms',()=>{assert.equal(core.ip('8.8.8.8'),'8.8.8.8');for(const x of ['999.1.1.1','1.2.3','127.01.0.1','http://8.8.8.8','8.8.8.8:53'])assert.equal(core.ip(x),null);});
+check('IPv6 canonicalization handles equivalent addresses',()=>assert.equal(core.ip('2408:8000:2009:0000:0000:0000:0000:00b3'),'2408:8000:2009::b3'));
+check('private and special IPv4 addresses match the country-service exclusions',()=>{for(const x of ['0.1.2.3','192.168.1.5','172.31.1.2','10.1.2.3','100.64.1.2','127.0.0.1','169.254.3.4','192.0.0.9','198.18.1.1','192.0.2.8','198.51.100.8','203.0.113.8','224.1.2.3','255.255.255.255'])assert.equal(core.publicIp(x),false,x);});
+check('IPv6 accepts only the country-service global-unicast range, excluding documentation',()=>{for(const x of ['::','::1','::2','::8.8.8.8','100::1','64:ff9b::808:808','300::1','4000::1','fe80::1','fd00::1','ff02::1','2001:db8::1'])assert.equal(core.publicIp(x),false,x);for(const x of ['8.8.8.8','2606:4700:4700::1111','2000::1','3fff::1'])assert.equal(core.publicIp(x),true,x);});
+check('IPv4-mapped IPv6 addresses follow the mapped IPv4 public check',()=>{assert.equal(core.publicIp('::ffff:192.168.1.2'),false);assert.equal(core.publicIp('::ffff:192.0.0.9'),false);assert.equal(core.publicIp('::ffff:8.8.8.8'),true);});
+check('unknown country placeholders never complete a country check',()=>{for(const cc of ['ZZ','zz','XX','xx','','China',null])assert.equal(core.country(cc),'');assert.equal(core.country('cn'),'CN');});
+
+const sample=core.parseDns('BrowserLeaks IPv4',{'202.99.96.214':['CN','China, Tianjin','Example ISP']});
+check('provider DNS address is parsed rather than compared to a tiny hardcoded list',()=>assert.equal(sample[0].country,'CN'));
+check('IPv6 DNS results classify CN case-insensitively',()=>assert.equal(core.parseDns('BrowserLeaks IPv6',{'2408:8000:2009::b3':['cn','China','Example']})[0].country,'CN'));
+check('Surfshark result schema is supported',()=>assert.equal(core.parseDns('Surfshark',{'8.8.8.8':{CountryCode:'US',Country:'United States',City:'Example',ISP:'Example'}})[0].source,'Surfshark'));
+check('Fastly result schema is supported',()=>assert.equal(core.parseDns('Fastly',{dns_resolver_info:{ip:'8.8.4.4',cc:'US',as_name:'Example'}})[0].country,'US'));
+check('empty and malformed DNS responses are rejected',()=>{for(const body of [{},[],null,{'invalid':['CN','China']}])assert.throws(()=>core.parseDns('BrowserLeaks IPv4',body));});
+check('a CN resolver remains a finding despite foreign resolvers and failed requests',()=>{const r=core.dnsFinding([{source:'BrowserLeaks IPv4',rows:sample},{source:'Fastly',rows:[{ip:'8.8.8.8',country:'US',source:'Fastly'}]},{source:'Surfshark',error:'timeout'}]);assert.equal(r.IsClue,true);assert.match(r.Coverage,/失败 1/);assert.match(r.MatchingEvidence,/202\.99\.96\.214 \| country=CN \| source=BrowserLeaks IPv4/);assert.match(r.SupportedClaim,/中国大陆解析器/);});
+check('all DNS failures never become a clean result',()=>assert.equal(core.dnsFinding([{source:'A',error:'timeout'},{source:'B',error:'CORS'}]).State,'读取失败'));
+check('unknown and placeholder DNS countries are incomplete checks',()=>{for(const cc of ['','ZZ','XX']){const r=core.dnsFinding([{source:'A',rows:[{ip:'8.8.8.8',country:cc,source:'A'}]}]);assert.equal(r.IsClue,null);assert.match(r.Coverage,/归属未知 1/);}});
+check('known non-CN DNS samples have a negative verdict with failures disclosed separately',()=>{const r=core.dnsFinding([{source:'A',rows:[{ip:'8.8.8.8',country:'US',source:'A'}]},{source:'B',error:'CORS'}]);assert.equal(r.IsClue,false);assert.match(r.Coverage,/失败 1/);assert.match(r.Evidence,/CORS/);});
+check('repeated resolver samples are deduplicated',()=>assert.match(core.dnsFinding([{source:'A',rows:sample},{source:'A',rows:sample}]).Evidence,/独立解析器 1/));
+check('conflicting DNS country attribution discloses both sources and preserves CN',()=>{const r=core.dnsFinding([{source:'A',rows:sample},{source:'B',rows:[{...sample[0],source:'B',country:'JP'}]}]);assert.equal(r.IsClue,true);assert.match(r.Coverage,/归属冲突 1/);assert.match(r.Evidence,/来源 BrowserLeaks IPv4/);assert.match(r.Evidence,/JP.*来源 B/);});
+
+check('HTTPS failures stay separate from unknown country coverage',()=>{const r=core.httpsFinding([{name:'Claude',error:'CORS'},{name:'ipify',ip:'8.8.8.8'}]);assert.match(r.Coverage,/1\/2/);assert.equal(r.IsClue,null);assert.match(r.Evidence,/CORS/);});
+check('no HTTPS observations never produce a verdict from backend assumptions',()=>assert.equal(core.httpsFinding([{name:'Claude',error:'CORS'}]).State,'读取失败'));
+check('CN HTTPS country evidence is positive even when all endpoints use the same exit',()=>{const r=core.httpsFinding([{name:'ipify',ip:'8.8.8.8'},{name:'claude.com',ip:'8.8.8.8',country:'CN'},{name:'other',error:'timeout'}]);assert.equal(r.IsClue,true);assert.match(r.Coverage,/国家未知 0/);assert.match(r.Coverage,/请求失败 1/);assert.match(r.MatchingEvidence,/country=CN.*claude\.com 端点国家字段/);assert.equal(r.EvidenceFamily,'网络出口');});
+check('same canonical IPv6 HTTPS exit shares country evidence with original source names',()=>{const r=core.httpsFinding([{name:'ipify',ip:'2606:4700:4700:0:0:0:0:1111'},{name:'claude.ai',ip:'2606:4700:4700::1111',country:'JP'}]);assert.equal(r.IsClue,false);assert.match(r.Coverage,/国家未知 0/);assert.match(r.Evidence,/ipify：2606:4700:4700::1111 \| country=JP \| 来源=claude\.ai 端点国家字段:JP/);});
+check('different non-CN HTTPS exits are negative while the route difference remains observable',()=>{const r=core.httpsFinding([{name:'a',ip:'8.8.8.8',country:'US'},{name:'b',ip:'1.1.1.1',country:'JP'}]);assert.equal(r.IsClue,false);assert.match(r.Observation,/路径差异/);assert.equal(r.MatchingEvidence,'');});
+check('HTTPS address differences with unknown countries do not imply China',()=>assert.equal(core.httpsFinding([{name:'a',ip:'8.8.8.8'},{name:'b',ip:'1.1.1.1'}]).IsClue,null));
+check('HTTPS country conflicts retain CN, disclose both sources, and identify the actual CN source',()=>{const r=core.httpsFinding([{name:'trace',ip:'8.8.8.8',country:'CN',countrySources:[{source:'synthetic lookup',country:'US'}]}]);assert.equal(r.IsClue,true);assert.match(r.Coverage,/归属冲突 1/);assert.match(r.Evidence,/synthetic lookup:US/);assert.match(r.MatchingEvidence,/trace 端点国家字段/);assert.doesNotMatch(r.MatchingEvidence,/synthetic lookup/);});
+check('HTTPS unknown country placeholders do not become a negative verdict',()=>{for(const cc of ['ZZ','XX'])assert.equal(core.httpsFinding([{name:'a',ip:'8.8.8.8',country:cc}]).IsClue,null);});
+check('an unknown country on a different HTTPS address keeps the overall check incomplete',()=>assert.equal(core.httpsFinding([{name:'a',ip:'8.8.8.8',country:'US'},{name:'b',ip:'1.1.1.1'}]).IsClue,null));
+check('private HTTPS endpoint data cannot become a country clue',()=>{const r=core.httpsFinding([{name:'a',ip:'192.168.1.1',country:'CN'}]);assert.equal(r.State,'读取失败');assert.equal(r.IsClue,null);assert.match(r.Evidence,/非有效公网出口/);});
+check('known non-CN IPv4 and IPv6 HTTPS exits complete the country check without a path comparison',()=>assert.equal(core.httpsFinding([{name:'a',ip:'8.8.8.8',country:'US'},{name:'b',ip:'2606:4700:4700::1111',country:'US'}]).IsClue,false));
+
+check('completed ICE without public candidates has no China exit evidence',()=>assert.equal(core.rtcFinding({completed:true,candidates:[]},https).IsClue,false));
+check('private and mDNS ICE candidates do not count as geographic evidence',()=>assert.equal(core.rtcFinding({completed:true,candidates:[candidate('192.168.1.2','host'),candidate('opaque.local','host')]},https).IsClue,false));
+check('matching HTTPS and WebRTC addresses with known US country are negative',()=>{const r=core.rtcFinding(rtc('8.8.8.8','US'),https);assert.equal(r.IsClue,false);assert.match(r.Coverage,/路径差异 0/);});
+check('a matching CN WebRTC address is positive even without a route difference',()=>{const r=core.rtcFinding(rtc('8.8.8.8','CN'),https);assert.equal(r.IsClue,true);assert.match(r.Coverage,/路径差异 0/);assert.match(r.MatchingEvidence,/country=CN.*synthetic country source/);});
+check('a different known US WebRTC address does not imply China',()=>{const r=core.rtcFinding(rtc('1.1.1.1','US'),https);assert.equal(r.IsClue,false);assert.match(r.Observation,/差异本身不指向中国大陆/);assert.match(r.Coverage,/路径差异 1/);});
+check('a different public WebRTC address without country evidence is incomplete',()=>assert.equal(core.rtcFinding(rtc('1.1.1.1'),https).State,'不可判定'));
+check('IPv6 WebRTC CN evidence is positive when HTTPS has only IPv4 data',()=>assert.equal(core.rtcFinding(rtc('2408:8000:2009::b3','CN'),https).IsClue,true));
+check('unknown IPv6 WebRTC country is incomplete regardless of the HTTPS address family',()=>assert.equal(core.rtcFinding(rtc('2606:4700:4700::1111'),https).State,'不可判定'));
+check('TURN relay is excluded even when it has CN country attribution',()=>assert.equal(core.rtcFinding({completed:true,candidates:[candidate('1.1.1.1','relay')],geography:[geo('1.1.1.1','CN')]},https).IsClue,false));
+check('ICE timeout never generates a negative verdict',()=>assert.equal(core.rtcFinding({completed:false,error:'timeout',candidates:[]},https).State,'读取失败'));
+check('partial ICE with already observed CN evidence retains the positive and incomplete coverage',()=>{const r=core.rtcFinding(rtc('1.1.1.1','CN',{completed:false,error:'timeout'}),https);assert.equal(r.IsClue,true);assert.match(r.Coverage,/ICE 未完成/);assert.match(r.Evidence,/timeout/);});
+check('partial ICE with only a known foreign path difference remains a failure',()=>assert.equal(core.rtcFinding(rtc('1.1.1.1','US',{completed:false,error:'timeout'}),https).State,'读取失败'));
+check('WebRTC conflicting sources preserve CN and disclose the foreign observation',()=>{const r=core.rtcFinding(rtc('1.1.1.1',null,{geography:[geo('1.1.1.1','US','foreign source'),geo('1.1.1.1','CN','CN source')]}),https);assert.equal(r.IsClue,true);assert.match(r.Coverage,/归属冲突 1/);assert.match(r.Evidence,/foreign source:US, CN source:CN/);assert.match(r.MatchingEvidence,/source=CN source/);assert.doesNotMatch(r.MatchingEvidence,/foreign source/);});
+check('WebRTC attribution matches canonical IPv6 addresses and keeps nested source evidence',()=>{const r=core.rtcFinding(rtc('2408:8000:2009::b3',null,{geography:[{Ip:'2408:8000:2009:0:0:0:0:b3',Country:'US',Source:'lookup',countrySources:[{country:'CN',source:'claude.com 端点国家字段'}]}]}),https);assert.equal(r.IsClue,true);assert.match(r.Evidence,/lookup:US/);assert.match(r.MatchingEvidence,/claude\.com 端点国家字段/);});
+check('WebRTC unknown country placeholders never clear the check',()=>{for(const cc of ['ZZ','XX'])assert.equal(core.rtcFinding(rtc('1.1.1.1',cc),https).IsClue,null);});
+check('all failed probes retain null China association verdicts',()=>{assert.equal(core.dnsFinding([{source:'x',error:'timeout'}]).IsClue,null);assert.equal(core.httpsFinding([{name:'x',error:'timeout'}]).IsClue,null);assert.equal(core.rtcFinding({completed:false,candidates:[]},[]).IsClue,null);});
+console.log('NETWORK JS CHECKS PASSED: '+count);

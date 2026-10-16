@@ -1,0 +1,42 @@
+name: Windows checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Frontend and local web API
+        shell: cmd
+        run: test-risk.cmd --no-pause
+      - name: Evidence rules and network
+        shell: cmd
+        run: test-network.cmd --no-pause
+      - name: Core and import fixtures
+        shell: cmd
+        run: test.cmd --no-pause
+      - name: Relocated app and native x86/x64
+        shell: powershell
+        run: ./test-portability.ps1
+      - name: Build portable ZIP
+        shell: powershell
+        run: ./package.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ matrix.os }}
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error

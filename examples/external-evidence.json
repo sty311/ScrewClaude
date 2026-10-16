@@ -1,0 +1,45 @@
+{
+  "format": "LocalLens External Evidence 1",
+  "records": [
+    {
+      "checkId": 56,
+      "source": "示例占位，请替换为本人取得的实际来源",
+      "observedAt": "2026-10-15T00:00:00Z",
+      "countryCode": "",
+      "deviceTag": "",
+      "note": "样例不是实际证据，请删除后填写自己的记录"
+    },
+    {
+      "checkId": 57,
+      "source": "示例占位，请替换为本人取得的实际来源",
+      "observedAt": "2026-10-15T00:00:00Z",
+      "countryCode": "",
+      "deviceTag": "",
+      "note": "样例不是实际证据，请删除后填写自己的记录"
+    },
+    {
+      "checkId": 59,
+      "source": "示例占位，请替换为本人取得的实际来源",
+      "observedAt": "2026-10-15T00:00:00Z",
+      "countryCode": "",
+      "deviceTag": "",
+      "note": "样例不是实际证据，请删除后填写自己的记录"
+    },
+    {
+      "checkId": 60,
+      "source": "示例占位，请替换为本人取得的实际来源",
+      "observedAt": "2026-10-15T00:00:00Z",
+      "countryCode": "",
+      "deviceTag": "",
+      "note": "样例不是实际证据，请删除后填写自己的记录"
+    },
+    {
+      "checkId": 61,
+      "source": "示例占位，请替换为本人取得的实际来源",
+      "observedAt": "2026-10-15T00:00:00Z",
+      "countryCode": "",
+      "deviceTag": "",
+      "note": "样例不是实际证据，请删除后填写自己的记录"
+    }
+  ]
+}
