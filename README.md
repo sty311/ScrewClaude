@@ -8,7 +8,7 @@ Windows 本机环境风险检测工具：69 项检查、0–100 风险圆环、�
 
 ## 下载与使用
 
-1. 从 [Releases](https://github.com/sty311/ScrewClaude/releases/latest) 下载 **ScrewClaude-2.12.1-windows-portable.zip**，完整解压到任意可访问目录。
+1. 从 [Releases](https://github.com/sty311/ScrewClaude/releases/latest) 下载 **ScrewClaude-2.12.2-windows-portable.zip**，完整解压到任意可访问目录。
 2. 双击 **start-web.cmd**（也可以直接打开 ScrewClaude.Web.exe），浏览器会打开本机页面。
 3. 点击“开始检测”。默认尝试全部 69 项，自动搜索本机文件与已保存记录；展开卡片查看搜索范围、读取结果及计分。
 4. 通过网页“关于”中的退出操作或系统托盘退出服务。关闭浏览器标签页不会停止服务。
@@ -28,7 +28,7 @@ Windows 本机环境风险检测工具：69 项检查、0–100 风险圆环、�
 
 运行发行包**不需要 Node、Python、Visual Studio 或 npm install**。不同电脑的硬件、权限、浏览器配置和网络不同，检测结果与跳过数量也会不同。便携不代表每台电脑的 69 项都能读取。
 
-默认地址 http://127.0.0.1:53174/。端口被占用时先退出已有 ScrewClaude；也可运行 start-web.cmd --port 53176。重复双击不会替代已运行的服务；请打开已有页面或退出后重开。不要从 ZIP 预览窗口直接运行 EXE。
+程序优先使用 http://127.0.0.1:53174/；该端口被系统保留、策略禁止或已被其他程序占用时，会自动向 Windows 申请可用的本机端口并打开实际地址。需要固定端口时可运行 `start-web.cmd --port 53176`，显式端口不可用会直接报错。重复双击可能启动另一个本机实例；请从系统托盘退出不用的实例。不要从 ZIP 预览窗口直接运行 EXE。
 
 ## 检测与评分
 

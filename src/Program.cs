@@ -31,7 +31,7 @@ namespace LocalLens {
     Label summary,status,detailTitle; CheckBox online,wifi,history,detailed; Button start,stop,export,browse,admin;
     ProgressBar progress;
     public MainForm(bool demoMode) {
-      demo=demoMode; Text="ScrewClaude 2.12.1 · Windows 环境自查"; Size=new Size(1240,850);MinimumSize=new Size(1040,720);StartPosition=FormStartPosition.CenterScreen;
+      demo=demoMode; Text="ScrewClaude 2.12.2 · Windows 环境自查"; Size=new Size(1240,850);MinimumSize=new Size(1040,720);StartPosition=FormStartPosition.CenterScreen;
       scanError=ex=>MessageBox.Show(this,ex.Message,"扫描错误",MessageBoxButtons.OK,MessageBoxIcon.Warning);
       AutoScaleMode=AutoScaleMode.Font;Font=new Font("Microsoft YaHei UI",9F);BackColor=bg;ForeColor=ink;
       try{Icon=new Icon(Assembly.GetExecutingAssembly().GetManifestResourceStream("app.ico"));}catch{}
@@ -48,7 +48,7 @@ namespace LocalLens {
       var layout=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=1,RowCount=5,Padding=new Padding(22)};
       layout.RowStyles.Add(new RowStyle(SizeType.Absolute,93));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,101));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,42));layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));layout.RowStyles.Add(new RowStyle(SizeType.Absolute,65));Controls.Add(layout);
       var header=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=2,RowCount=2,Margin=Padding.Empty};header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,220));header.RowStyles.Add(new RowStyle(SizeType.Absolute,48));header.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-      header.Controls.Add(Label("ScrewClaude 2.12.1 /  本地环境自查",23,ink,true),0,0);header.Controls.Add(Label("逐项查看可见线索，明确检测范围。发现关联 ≠ 确定位置。",10,muted),0,1);
+      header.Controls.Add(Label("ScrewClaude 2.12.2 /  本地环境自查",23,ink,true),0,0);header.Controls.Add(Label("逐项查看可见线索，明确检测范围。发现关联 ≠ 确定位置。",10,muted),0,1);
       try{elevated=new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);}catch{}
       var mode=Label(demo?"演示数据 · 非真实检测":elevated?"管理员模式 · 只读":"普通用户模式 · 只读",10,accent,true);mode.TextAlign=ContentAlignment.MiddleRight;header.Controls.Add(mode,1,0);
       admin=Button("以管理员身份重新打开",210,Elevate);admin.Enabled=!elevated&&!demo;admin.Anchor=AnchorStyles.Right;header.Controls.Add(admin,1,1);layout.Controls.Add(header,0,0);
